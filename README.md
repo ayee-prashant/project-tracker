@@ -39,6 +39,26 @@ The authorization server remains Auth0; resource metadata points to its issuer. 
 
 Opening `/mcp` in a browser does not perform OAuth or list tickets. Use an MCP client. A plugin ZIP cannot enable server-side OAuth by itself.
 
+### What a connected agent may not do
+
+A connected agent acts as the user who authorized it, but it is not that user. The
+identity records how it was proved - a bearer token for the `/mcp` audience is an
+agent, a signed-in session is a person - and two things are refused for agents:
+
+- **Setting status to `Resolved`.** Resolving is an acceptance, and acceptance is a
+  human act. An agent moves finished work to `QA Started` and records its evidence
+  with `add_comment`; a person accepts it.
+- **Setting `progress`.** A percentage an agent chose has no evidence behind it and
+  reads on a board exactly like a measured one.
+
+Both are enforced in the ticket handler, not in the MCP layer, so a bearer token
+used directly against `/api/tickets/{id}` is refused the same way. Ticket activity
+records `updated by agent` rather than `updated`, so the timeline distinguishes what
+an agent reported from what a person did.
+
+These are authorization rules, not prompt guidance. A tool description asking an
+agent not to resolve untested work is advice; this is a control.
+
 ## Verification
 
 `pnpm test` checks MCP validation/protocol, navigation rendering, network error handling, storage, permissions, workflow and token rejection. `pnpm build` checks production compilation/types.
