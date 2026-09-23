@@ -2,6 +2,11 @@
 
 Development Status Portal migrated from Sites to Next.js on Railway.
 
+Dashboard statuses and progress are reported values, not independently verified
+completion. Counts cover the loaded accessible tickets; the UI warns when older
+tickets exceed the 250-record list limit. See [STRIDE-REVIEW.md](STRIDE-REVIEW.md)
+for the focused reporting corrections and the team-visibility assessment.
+
 ## Run
 
 Node 24 and pnpm 11.25.0. Run `pnpm install`, `pnpm build`, `pnpm start`.

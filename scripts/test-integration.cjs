@@ -28,7 +28,9 @@ const write = (method, body) => new Request('https://portal.example.test/api', {
 const read = () => new Request('https://portal.example.test/api');
 const ctx = id => ({ params: Promise.resolve({ id: String(id) }) });
 async function data(response, status = 200) { assert.equal(response.status, status, await response.clone().text()); return response.json(); }
+let fixtureDb;
 (async () => {
+  fixtureDb = load('db/index.ts').getDb();
   const projects = load('app/api/projects/route.ts');
   const members = load('app/api/projects/[id]/members/route.ts');
   const tickets = load('app/api/tickets/route.ts');
@@ -77,6 +79,24 @@ async function data(response, status = 200) { assert.equal(response.status, stat
   identity = editor;
   assert.equal((await data(await detail.PATCH(write('PATCH', { status: 'Resolved' }), context))).ticket.status, 'Resolved');
   assert.equal((await data(await detail.GET(read(), context))).comments.length, 1);
+  // More accessible records than the list bound must be disclosed, not presented
+  // as a complete dashboard. Synthetic rows stay inside this disposable database.
+  const { getDb } = load('db/index.ts');
+  const schema = load('db/schema.ts');
+  getDb().transaction(tx => {
+    for (let i = 0; i < 251; i++) tx.insert(schema.tickets).values({
+      key: `CAP-${i}`, title: `Capacity fixture ${i}`, projectId: project.id,
+      project: project.name, reporterId: owner.userId,
+    }).run();
+  });
+  const capped = await data(await tickets.GET(read()));
+  assert.equal(capped.tickets.length, 250);
+  assert.equal(capped.hasMore, true);
+  assert.equal(capped.limit, 250);
+  identity = { ...viewer, userId: 'auth0|outsider', email: 'outsider@example.test' };
+  const hidden = await data(await tickets.GET(read()));
+  assert.equal(hidden.tickets.length, 0);
+  assert.equal(hidden.hasMore, false, 'pagination metadata must not disclose inaccessible tickets');
   identity = null;
   await data(await projects.GET(), 401);
   const storage = load('lib/storage.ts');
@@ -95,4 +115,10 @@ async function data(response, status = 200) { assert.equal(response.status, stat
   for (const claims of [{ scope: 'openid' }, { aud: 'other-api' }, { iss: 'https://evil.example.test/' }, { exp: 1 }]) await assert.rejects(() => makeToken(claims).then(t => verifyBearer(t, keys)));
   await assert.rejects(() => verifyBearer('forged.token.value', keys));
   console.log('PASS: real SQLite migrations/persistence, concurrent ticket creation, dates, owner/editor/viewer isolation, profile, comments, attachments, rework loop, QA resolution, and OAuth JWT validation. Fixtures are not live user sign-ins.');
-})().catch(error => { console.error(error); process.exitCode = 1; }).finally(() => { Module._load = originalLoad; fs.rmSync(directory, { recursive: true, force: true }); });
+})().catch(error => { console.error(error); process.exitCode = 1; }).finally(() => {
+  Module._load = originalLoad;
+  fixtureDb?.$client.close();
+  const target = path.resolve(directory);
+  if (path.dirname(target) !== path.resolve(os.tmpdir()) || !path.basename(target).startsWith('portal-qa-')) throw new Error('Unexpected fixture cleanup path');
+  fs.rmSync(target, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 });
+});
