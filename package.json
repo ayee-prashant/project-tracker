@@ -9,7 +9,7 @@
     "dev": "next dev --hostname 0.0.0.0",
     "build": "next build --webpack",
     "start": "next start --hostname 0.0.0.0",
-    "test": "node scripts/test-mcp.mjs && node scripts/test-navigation.mjs && node scripts/test-integration.cjs",
+    "test": "node scripts/test-mcp.mjs && node scripts/test-navigation.mjs && node scripts/test-reporting.mjs && node scripts/test-integration.cjs",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
