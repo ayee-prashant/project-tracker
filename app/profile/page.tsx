@@ -1,0 +1,1 @@
+import { requireChatGPTUser } from "../chatgpt-auth";import { AppShell } from "../../components/app-shell";import { ProfileForm } from "../../components/profile-form";export const dynamic="force-dynamic";export default async function Profile(){const user=await requireChatGPTUser("/profile");return <AppShell user={user} active="profile"><ProfileForm/></AppShell>}

@@ -1,0 +1,1 @@
+import { requireChatGPTUser } from "../chatgpt-auth";import { AppShell } from "../../components/app-shell";import { TicketWorkspace } from "../../components/ticket-workspace";export const dynamic="force-dynamic";export default async function Tickets(){const user=await requireChatGPTUser("/tickets");return <AppShell user={user} active="tickets"><TicketWorkspace/></AppShell>}
