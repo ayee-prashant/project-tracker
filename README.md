@@ -41,5 +41,9 @@ Opening `/mcp` in a browser does not perform OAuth or list tickets. Use an MCP c
 
 ## Verification
 
+Project pages now provide a Jira-style tracking space with Board, List, Summary,
+Calendar and Timeline views. See [space tracking](SPACE-TRACKING.md) for behavior,
+coverage limits and research, and [release review](docs/RELEASE_REVIEW.md) for checks.
+
 `pnpm test` checks MCP validation/protocol, navigation rendering, network error handling, storage, permissions, workflow and token rejection. `pnpm build` checks production compilation/types.
 Live login, browser CRUD, and a real ChatGPT OAuth handshake must be verified after Auth0 is configured. Unit/integration fixtures do not count as live dogfooding.

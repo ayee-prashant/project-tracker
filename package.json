@@ -9,8 +9,9 @@
     "dev": "next dev --hostname 0.0.0.0",
     "build": "next build --webpack",
     "start": "next start --hostname 0.0.0.0",
-    "test": "node scripts/test-mcp.mjs && node scripts/test-navigation.mjs && node scripts/test-reporting.mjs && node scripts/test-integration.cjs",
-    "typecheck": "tsc --noEmit"
+    "test": "node scripts/test-mcp.mjs && node scripts/test-navigation.mjs && node scripts/test-reporting.mjs && node scripts/test-space-board.mjs && node scripts/test-integration.cjs",
+    "typecheck": "tsc --noEmit",
+    "lint:space": "eslint components/space-board.tsx components/project-detail.tsx components/space-ticket-dialog.tsx lib/space-board.ts lib/update-ticket.ts lib/validation.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",
