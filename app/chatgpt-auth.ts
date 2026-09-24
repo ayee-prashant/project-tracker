@@ -6,7 +6,12 @@ import { profiles } from "../db/schema";
 import { getAuth0 } from "../lib/auth0";
 import { verifyBearer } from "../lib/bearer";
 // Compatibility names retained for existing portal components; Sites headers are never trusted.
-export type ChatGPTUser = { userId: string; displayName: string; email: string; fullName: string | null };
+// via records HOW the caller proved who they are, which is the only reliable
+// way to tell an agent from the person it signs in as. A bearer token is issued
+// for the /mcp audience and can only belong to a connected agent; a session
+// cookie means a person is at a keyboard. Both are the same USER - they are not
+// the same authority, and handlers must be able to tell them apart.
+export type ChatGPTUser = { userId: string; displayName: string; email: string; fullName: string | null; via: "agent" | "browser" };
 export async function getChatGPTUser(): Promise<ChatGPTUser | null> {
   const authorization = (await headers()).get("authorization");
   if (authorization) {
@@ -15,7 +20,7 @@ export async function getChatGPTUser(): Promise<ChatGPTUser | null> {
       const sub = await verifyBearer(authorization.slice(7));
       const profile = getDb().select().from(profiles).where(eq(profiles.userId, sub)).get();
       // Verified web sign-in must establish the subject/email mapping first.
-      return profile ? { userId: sub, email: profile.email, displayName: profile.displayName, fullName: profile.displayName } : null;
+      return profile ? { userId: sub, email: profile.email, displayName: profile.displayName, fullName: profile.displayName, via: "agent" } : null;
     } catch { return null; }
   }
   const client = getAuth0();
@@ -26,7 +31,7 @@ export async function getChatGPTUser(): Promise<ChatGPTUser | null> {
   const email = String(user.email).toLowerCase();
   const fullName = typeof user.name === "string" ? user.name : null;
   getDb().insert(profiles).values({ userId: user.sub, email, displayName: fullName || email }).onConflictDoNothing().run();
-  return { userId: user.sub, email, displayName: fullName || email, fullName };
+  return { userId: user.sub, email, displayName: fullName || email, fullName, via: "browser" };
 }
 export async function requireChatGPTUser(returnTo: string): Promise<ChatGPTUser> {
   const user = await getChatGPTUser();
