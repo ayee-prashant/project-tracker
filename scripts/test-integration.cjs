@@ -35,6 +35,7 @@ let fixtureDb;
   const members = load('app/api/projects/[id]/members/route.ts');
   const tickets = load('app/api/tickets/route.ts');
   const detail = load('app/api/tickets/[id]/route.ts');
+  const space = load('app/api/projects/[id]/route.ts');
   const comments = load('app/api/tickets/[id]/comments/route.ts');
   const uploads = load('app/api/tickets/[id]/attachments/route.ts');
   const download = load('app/api/attachments/[id]/route.ts');
@@ -53,6 +54,20 @@ let fixtureDb;
   await data(await tickets.POST(write('POST', { title: 'Invalid date', startDate: '2026-02-30' })), 400);
   await data(await tickets.POST(write('POST', { title: 'Reversed date', startDate: '2026-09-24', dueDate: '2026-09-23' })), 400);
   await data(await detail.PATCH(write('PATCH', { status: 'Resolved' }), context), 400);
+  const baseline = (await data(await detail.GET(read(), context))).activity.length;
+  const updated = await data(await detail.PATCH(write('PATCH', { title: 'Concurrent edit', expectedUpdatedAt: ticket.updatedAt }), context));
+  assert.notEqual(updated.ticket.updatedAt, ticket.updatedAt);
+  await data(await detail.PATCH(write('PATCH', { status: 'Open', expectedUpdatedAt: ticket.updatedAt }), context), 409);
+  await data(await detail.PATCH(write('PATCH', { startDate: '2026-02-30' }), context), 400);
+  await data(await detail.PATCH(write('PATCH', { dueDate: '2026-01-01' }), context), 400);
+  await data(await detail.PATCH(write('PATCH', { assigneeId: 'forged' }), context), 400);
+  const afterConflict = await data(await detail.GET(read(), context));
+  assert.equal(afterConflict.ticket.status, 'Created');
+  assert.equal(afterConflict.activity.length, baseline + 1, 'Failed saves must not append activity');
+  fixtureDb.$client.exec("CREATE TEMP TRIGGER fail_activity BEFORE INSERT ON ticket_activity BEGIN SELECT RAISE(ABORT, 'fixture activity failure'); END");
+  try { await assert.rejects(() => detail.PATCH(write('PATCH', { title: 'Must roll back' }), context), /fixture activity failure/); }
+  finally { fixtureDb.$client.exec('DROP TRIGGER fail_activity'); }
+  assert.equal((await data(await detail.GET(read(), context))).ticket.title, 'Concurrent edit', 'Ticket and activity must commit atomically');
   identity = viewer;
   await data(await detail.GET(read(), context));
   await data(await detail.PATCH(write('PATCH', { title: 'Unauthorized' }), context), 403);
@@ -84,16 +99,21 @@ let fixtureDb;
   const { getDb } = load('db/index.ts');
   const schema = load('db/schema.ts');
   getDb().transaction(tx => {
-    for (let i = 0; i < 251; i++) tx.insert(schema.tickets).values({
+    for (let i = 0; i < 501; i++) tx.insert(schema.tickets).values({
       key: `CAP-${i}`, title: `Capacity fixture ${i}`, projectId: project.id,
       project: project.name, reporterId: owner.userId,
     }).run();
   });
+  const projectCapped = await data(await space.GET(read(), projectContext));
+  assert.equal(projectCapped.tickets.length, 500);
+  assert.equal(projectCapped.hasMore, true);
+  assert.equal(projectCapped.limit, 500);
   const capped = await data(await tickets.GET(read()));
   assert.equal(capped.tickets.length, 250);
   assert.equal(capped.hasMore, true);
   assert.equal(capped.limit, 250);
   identity = { ...viewer, userId: 'auth0|outsider', email: 'outsider@example.test' };
+  await data(await space.GET(read(), projectContext), 404);
   const hidden = await data(await tickets.GET(read()));
   assert.equal(hidden.tickets.length, 0);
   assert.equal(hidden.hasMore, false, 'pagination metadata must not disclose inaccessible tickets');

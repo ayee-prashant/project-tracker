@@ -3,8 +3,9 @@
 Reviewed against the user's team visibility goal on 2026-09-24, starting at
 `127314e`. Working branch: `codex/team-visibility-pilot`.
 
-Use this repository as a reference for a readable ticket page, project navigation,
-comments and activity history. Keep STRIDE's existing ticket/event authority and
+The initial assessment used this repository as a UI reference. The user's later
+Jira-space request explicitly authorizes a working tracking interface here; see
+SPACE-TRACKING.md for the implemented scope and validation. Keep STRIDE's existing ticket/event authority and
 its scoped PM attention, developer handover and evidence-backed timeline. Replacing
 the existing backend or adding a second identity bridge would increase the pilot
 scope without establishing its value.
